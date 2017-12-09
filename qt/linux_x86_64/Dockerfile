@@ -1,5 +1,7 @@
 FROM ubuntu:artful
 
+LABEL maintainer="wolf.bublitz@gmail.com"
+
 # enabling source repositories
 RUN sed -i -- 's/#deb-src/deb-src/g' /etc/apt/sources.list && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list
 
@@ -16,7 +18,7 @@ RUN apt-get build-dep qt5-default --yes
 RUN apt-get install libxcb-xinerama0-dev --yes
 
 # build essentials
-RUN apt-get install build-essential perl python git --yes
+RUN apt-get install llvm clang clang++ build-essential perl python git --yes
 
 # libxcb
 RUN apt-get install '^libxcb.*-dev' libx11-xcb-dev libglu1-mesa-dev libxrender-dev libxi-dev --yes
@@ -33,17 +35,26 @@ RUN apt-get install libasound2-dev libgstreamer1.0-dev libgstreamer-plugins-base
 # cloning qt
 RUN git clone git://code.qt.io/qt/qt5.git 
 
+# checking out qt release
+RUN cd qt5; \ 
+	git checkout v5.10.0;
+
 # init repository
-RUN cd qt5 && git checkout v5.10.0 && perl init-repository
+RUN cd qt5; \
+	perl init-repository
+	
+# configure qt
+RUN cd qt5; \
+	./configure -developer-build -platform linux-clang -opensource -nomake examples -confirm-license -no-gtkstyle;
+	
+# build qt
+RUN cd qt5; \
+	make -j nproc;
 
-# configure sources
-RUN ./configure -developer-build -opensource -nomake examples -confirm-license -no-gtkstyle
-
-# compile
-RUN make -j4
-
-# install
-RUN make install
+# install qt
+RUN cd qt5; \
+	make install;
 
 # cleanup
-RUN git submodule foreach --recursive "git clean -dfx" && git clean -dfx
+RUN cd qt5; \
+	git submodule foreach --recursive "git clean -dfx" && git clean -dfx
